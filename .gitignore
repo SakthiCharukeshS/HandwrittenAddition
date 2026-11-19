@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+models/*.pkl
+dataset/raw/*
+dataset/processed/*
+!dataset/raw/.gitkeep
+!dataset/processed/.gitkeep
+.env
