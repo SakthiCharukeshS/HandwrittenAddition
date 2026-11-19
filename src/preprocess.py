@@ -1,52 +1,13 @@
 
 import cv2
 import os
+from src.normalization import normalize_digit
 
 # Project paths
 IMAGE_PATH = "dataset/raw/equation.jpeg"
 OUTPUT_DIR = "dataset/processed/equation_01"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-
-def normalize_character(binary_crop):
-    """
-    Convert a character into a centered 28x28 image.
-    """
-
-    # Find character boundaries
-    points = cv2.findNonZero(binary_crop)
-
-    if points is None:
-        return None
-
-    x, y, w, h = cv2.boundingRect(points)
-    character = binary_crop[y:y+h, x:x+w]
-
-    # Resize while preserving aspect ratio
-    scale = 20 / max(w, h)
-
-    new_w = max(1, int(w * scale))
-    new_h = max(1, int(h * scale))
-
-    resized = cv2.resize(
-        character,
-        (new_w, new_h),
-        interpolation=cv2.INTER_AREA
-    )
-
-    # Place character in the center of a 28x28 canvas
-    canvas = cv2.copyMakeBorder(
-        resized,
-        4, 4, 4, 4,
-        cv2.BORDER_CONSTANT,
-        value=0
-    )
-
-    # Center precisely
-    result = cv2.resize(canvas, (28, 28))
-
-    return result
 
 
 def preprocess_image():
@@ -155,7 +116,7 @@ def preprocess_image():
         crop = binary[y:y+h, x:x+w]
 
         # Normalize to 28x28
-        normalized = normalize_character(crop)
+        normalized = normalize_digit(crop)
 
         if normalized is not None:
 

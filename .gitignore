@@ -7,3 +7,4 @@ dataset/processed/*
 !dataset/raw/.gitkeep
 !dataset/processed/.gitkeep
 .env
+dataset/mnist/

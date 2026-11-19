@@ -1,9 +1,10 @@
 
 import os
-import cv2
 import joblib
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
+from normalization import normalize_digit
 
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import (
@@ -12,49 +13,51 @@ from sklearn.metrics import (
     ConfusionMatrixDisplay
 )
 
-DATASET_DIR = "dataset/processed/digits"
+DATA_PATH = "dataset/mnist/mnist.npz"
 MODEL_PATH = "models/knn_model.pkl"
 
 
-def load_dataset(split):
-
-    images = []
-    labels = []
-
-    split_dir = os.path.join(DATASET_DIR, split)
-
-    for digit in range(10):
-
-        digit_dir = os.path.join(split_dir, str(digit))
-
-        for filename in os.listdir(digit_dir):
-
-            path = os.path.join(digit_dir, filename)
-
-            image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-
-            if image is None:
-                continue
-
-            # Flatten 28x28 into 784 features
-            images.append(image.flatten())
-            labels.append(digit)
-
-    return np.array(images), np.array(labels)
-
-
 def main():
+    print("Loading MNIST dataset...")
 
-    print("Loading dataset...")
+    data = np.load(DATA_PATH)
 
-    X_train, y_train = load_dataset("train")
-    X_test, y_test = load_dataset("test")
+    x_train = data["x_train"]
+    y_train = data["y_train"]
+
+    x_test = data["x_test"]
+    y_test = data["y_test"]
+
+    # Select manageable subsets for KNN
+    rng = np.random.default_rng(42)
+
+    train_indices = rng.choice(
+        len(x_train), 8000, replace=False
+    )
+
+    test_indices = rng.choice(
+        len(x_test), 1000, replace=False
+    )
+
+    print("Normalizing MNIST images...")
+
+    X_train = np.array([
+        normalize_digit(img).flatten()
+        for img in x_train[train_indices]
+    ])
+
+    Y_train = y_train[train_indices]
+
+    X_test = np.array([
+        normalize_digit(img).flatten()
+        for img in x_test[test_indices]
+    ])
+
+    Y_test = y_test[test_indices]
 
     print("Training samples:", len(X_train))
     print("Testing samples:", len(X_test))
-    print("Features per image:", X_train.shape[1])
 
-    # Create KNN classifier
     model = KNeighborsClassifier(
         n_neighbors=3,
         weights="distance",
@@ -62,42 +65,27 @@ def main():
         n_jobs=-1
     )
 
-    # Train
     print("\nTraining KNN...")
-    model.fit(X_train, y_train)
+    model.fit(X_train, Y_train)
 
-    # Evaluate
     print("\nEvaluating model...")
-
     predictions = model.predict(X_test)
 
-    accuracy = accuracy_score(y_test, predictions)
+    accuracy = accuracy_score(Y_test, predictions)
 
     print("\nAccuracy:", round(accuracy * 100, 2), "%")
-
     print("\nClassification Report:")
-    print(
-        classification_report(
-            y_test,
-            predictions,
-            zero_division=0
-        )
-    )
+    print(classification_report(Y_test, predictions))
 
-    # Confusion matrix
     ConfusionMatrixDisplay.from_predictions(
-        y_test,
-        predictions,
-        cmap="Blues"
+        Y_test, predictions, cmap="Blues"
     )
 
-    plt.title("KNN Digit Recognition")
+    plt.title("MNIST KNN Digit Recognition")
     plt.tight_layout()
     plt.show()
 
-    # Save model
     os.makedirs("models", exist_ok=True)
-
     joblib.dump(model, MODEL_PATH)
 
     print("\nModel saved:", MODEL_PATH)
